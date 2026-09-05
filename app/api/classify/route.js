@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 const GEMINI_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent";
 
 // Simple keyword-based fallback classifier, used if the AI call fails
 // or returns something we can't parse. Keeps the demo working offline too.

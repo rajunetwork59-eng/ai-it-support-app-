@@ -106,6 +106,9 @@ export default function Home() {
           <p style={{ color: "#666", margin: 0 }}>{user?.email}</p>
         </div>
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+          <Link href="/chat" style={{ color: PURPLE, fontWeight: 600, textDecoration: "none" }}>
+            Chat
+          </Link>
           <Link href="/dashboard" style={{ color: PURPLE, fontWeight: 600, textDecoration: "none" }}>
             Dashboard
           </Link>
