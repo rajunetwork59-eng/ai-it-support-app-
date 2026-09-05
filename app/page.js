@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { supabase } from "../lib/supabaseClient";
 
 const PURPLE = "#4C2A8C";
+
+const DEPARTMENTS = ["IT", "Sales", "HR", "Finance", "Operations", "Marketing", "Support", "Other"];
 
 const priorityColor = {
   Critical: "#B23B3B",
@@ -13,14 +17,35 @@ const priorityColor = {
 };
 
 export default function Home() {
+  const [user, setUser] = useState(null);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [name, setName] = useState("");
+  const [department, setDepartment] = useState("IT");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
+  const router = useRouter();
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) {
+        router.push("/login");
+      } else {
+        setUser(data.user);
+      }
+      setCheckingAuth(false);
+    });
+  }, [router]);
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    router.push("/login");
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!query.trim()) return;
+    if (!query.trim() || !name.trim()) return;
     setLoading(true);
     setError("");
     setResult(null);
@@ -41,23 +66,36 @@ export default function Home() {
 
       const status = classified.auto_resolve ? "auto-resolved" : "open";
 
-      await fetch("/api/tickets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const { error: insertError } = await supabase.from("tickets").insert([
+        {
           user_query: query,
           category: classified.category,
           priority: classified.priority,
           ai_response: classified.ai_response,
           status,
-        }),
-      });
+          user_id: user.id,
+          user_email: user.email,
+          raised_by_name: name,
+          department,
+        },
+      ]);
+
+      if (insertError) {
+        setError(insertError.message);
+        setLoading(false);
+        return;
+      }
 
       setResult({ ...classified, status });
+      setQuery("");
     } catch (err) {
       setError("Something went wrong. Please try again.");
     }
     setLoading(false);
+  }
+
+  if (checkingAuth) {
+    return <main style={{ padding: 40, textAlign: "center", color: "#666" }}>Loading...</main>;
   }
 
   return (
@@ -65,18 +103,49 @@ export default function Home() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <div>
           <h1 style={{ color: PURPLE, marginBottom: 4 }}>AI IT Support Assistant</h1>
-          <p style={{ color: "#666", margin: 0 }}>TechNova Solutions — demo helpdesk chatbot</p>
+          <p style={{ color: "#666", margin: 0 }}>{user?.email}</p>
         </div>
-        <Link href="/dashboard" style={{ color: PURPLE, fontWeight: 600, textDecoration: "none" }}>
-          Dashboard →
-        </Link>
+        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+          <Link href="/dashboard" style={{ color: PURPLE, fontWeight: 600, textDecoration: "none" }}>
+            Dashboard
+          </Link>
+          <button
+            onClick={handleLogout}
+            style={{ background: "none", border: "1px solid #ddd", borderRadius: 6, padding: "6px 12px", cursor: "pointer", color: "#666" }}
+          >
+            Log out
+          </button>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} style={{ marginBottom: 24 }}>
+        <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
+          <div style={{ flex: 1 }}>
+            <label style={labelStyle}>Your Name</label>
+            <input
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Raju"
+              style={inputStyle}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={labelStyle}>Department</label>
+            <select value={department} onChange={(e) => setDepartment(e.target.value)} style={inputStyle}>
+              {DEPARTMENTS.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <label style={labelStyle}>Describe your issue</label>
         <textarea
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Describe your issue... e.g. 'I forgot my password and can't log in'"
+          placeholder="e.g. 'I forgot my password and can't log in'"
           rows={4}
           style={{
             width: "100%",
@@ -146,3 +215,14 @@ export default function Home() {
     </main>
   );
 }
+
+const labelStyle = { fontSize: 12, color: "#666", display: "block", marginBottom: 4 };
+const inputStyle = {
+  width: "100%",
+  padding: 10,
+  borderRadius: 8,
+  border: "1px solid #ddd",
+  fontSize: 14,
+  boxSizing: "border-box",
+  fontFamily: "inherit",
+};

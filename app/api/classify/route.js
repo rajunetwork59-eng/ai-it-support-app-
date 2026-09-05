@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 const GEMINI_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
 
 // Simple keyword-based fallback classifier, used if the AI call fails
 // or returns something we can't parse. Keeps the demo working offline too.
@@ -43,15 +43,35 @@ Classify it and respond ONLY with valid JSON (no markdown, no extra text) in thi
 }`;
 
   try {
-    const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-      }),
-    });
+    let res, data;
+    const maxAttempts = 3;
 
-    const data = await res.json();
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      res = await fetch(GEMINI_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+        }),
+      });
+      data = await res.json();
+
+      if (res.ok) break;
+
+      const isOverloaded = data?.error?.status === "UNAVAILABLE" || res.status === 503;
+      if (isOverloaded && attempt < maxAttempts) {
+        console.log(`Gemini overloaded, retrying (attempt ${attempt})...`);
+        await new Promise((r) => setTimeout(r, attempt * 800)); // 800ms, then 1600ms
+        continue;
+      }
+
+      console.error("Gemini API error response:", JSON.stringify(data));
+      throw new Error(data?.error?.message || "Gemini API request failed");
+    }
+
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
     const cleaned = text.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(cleaned);
@@ -64,6 +84,7 @@ Classify it and respond ONLY with valid JSON (no markdown, no extra text) in thi
       source: "gemini",
     });
   } catch (err) {
+    console.error("Gemini classify error:", err);
     // AI call failed or returned unparseable text — use the fallback so the demo still works.
     const fb = fallbackClassify(query);
     return NextResponse.json({

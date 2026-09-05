@@ -3,10 +3,11 @@
 AI-powered IT support chatbot demo for TechNova Solutions — built with Next.js, Google Gemini API, and Supabase. All free tiers, no credit card.
 
 ## What it does
-- User describes an IT issue in a chat box
+- Users sign up / log in with email + password (Supabase Auth)
+- Each user describes an IT issue in a chat box
 - Gemini AI classifies it (category + priority) and decides if it can be auto-resolved
-- Ticket is saved to a Supabase database
-- A dashboard shows ticket volume, automation rate, and category breakdown
+- Ticket is saved to Supabase, tagged with that user's account
+- A dashboard shows ticket volume, automation rate, and category breakdown — only for the logged-in user's own tickets (enforced by database-level Row Level Security, not just app logic)
 
 ## Setup (run this on your own laptop)
 
@@ -25,6 +26,11 @@ AI-powered IT support chatbot demo for TechNova Solutions — built with Next.js
 4. **Set up the database table**:
    - Go to your Supabase project → SQL Editor → New query
    - Paste the contents of `supabase_schema.sql` and click Run
+
+5. **Add per-user security (if upgrading from the earlier version)**:
+   - In the same SQL Editor, run `supabase_migration_auth.sql`
+   - This adds a `user_id` column and restricts each user to only see their own tickets
+   - In Supabase → Authentication → Providers, make sure Email is enabled. For quick local testing, you can disable "Confirm email" under Authentication → Settings so new accounts can log in immediately.
 
 5. **Run the app locally**:
    ```
