@@ -112,6 +112,9 @@ export default function Home() {
           <Link href="/dashboard" style={{ color: PURPLE, fontWeight: 600, textDecoration: "none" }}>
             Dashboard
           </Link>
+          <Link href="/admin" style={{ color: PURPLE, fontWeight: 600, textDecoration: "none" }}>
+            Admin
+          </Link>
           <button
             onClick={handleLogout}
             style={{ background: "none", border: "1px solid #ddd", borderRadius: 6, padding: "6px 12px", cursor: "pointer", color: "#666" }}
